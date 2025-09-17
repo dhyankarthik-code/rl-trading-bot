@@ -1,0 +1,74 @@
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import numpy as np
+from agent import load_model, predict_action
+import yfinance as yf
+import shap
+import talib
+from sklearn.preprocessing import MinMaxScaler
+import pandas as pd
+from alpaca_trade_api import REST  # Placeholder, need keys
+
+app = FastAPI()
+
+# Load model at startup
+model = load_model()
+
+class PredictRequest(BaseModel):
+    ticker: str
+
+@app.post('/predict')
+def predict(request: PredictRequest):
+    """
+    Predict buy/sell/hold action for a given ticker.
+
+    Args:
+        request: Request with ticker.
+
+    Returns:
+        dict: Action and SHAP explanation.
+    """
+    try:
+        # Fetch live data (last 50 days for window)
+        df = yf.download(request.ticker, period='60d')
+        if df.empty:
+            raise HTTPException(status_code=400, detail="Invalid ticker")
+
+        # Preprocess similar to data.py
+        df = df.dropna()
+        scaler = MinMaxScaler()
+        df[['Open', 'High', 'Low', 'Close', 'Volume']] = scaler.fit_transform(df[['Open', 'High', 'Low', 'Close', 'Volume']])
+        df['RSI'] = talib.RSI(df['Close'], timeperiod=14)
+        df['MACD'], df['MACD_signal'], df['MACD_hist'] = talib.MACD(df['Close'])
+        df['upper'], df['middle'], df['lower'] = talib.BBANDS(df['Close'], timeperiod=20, nbdevup=2, nbdevdn=2, matype=0)
+        df['sentiment'] = 0.0  # Placeholder sentiment
+        df = df.fillna(method='bfill').fillna(method='ffill')
+
+        # Get last window
+        window = df.iloc[-50:].values.astype(np.float32)
+        if window.shape[0] < 50:
+            raise HTTPException(status_code=400, detail="Not enough data")
+
+        # Predict
+        action = predict_action(model, window)
+
+        # SHAP explanation (simplified)
+        def model_predict(obs):
+            return predict_action(model, obs.reshape(1, 50, -1))
+
+        explainer = shap.KernelExplainer(model_predict, window.reshape(1, -1))
+        shap_values = explainer.shap_values(window.reshape(1, -1))
+        shap_html = shap.plots.text(shap_values[0], show=False)  # Placeholder for HTML
+
+        return {'action': int(action), 'explanation': str(shap_html)}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Alpaca integration for paper trading (placeholder)
+# api = REST('API_KEY', 'SECRET_KEY', base_url='https://paper-api.alpaca.markets')
+# To place order: api.submit_order(symbol='AAPL', qty=1, side='buy', type='market', time_in_force='gtc')
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
