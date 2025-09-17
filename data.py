@@ -5,6 +5,10 @@ from nltk.sentiment.vader import SentimentIntensityAnalyzer
 import talib
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
+import nltk
+
+# Download NLTK data if needed
+nltk.download('vader_lexicon')
 
 # Initialize VADER sentiment analyzer
 sia = SentimentIntensityAnalyzer()
