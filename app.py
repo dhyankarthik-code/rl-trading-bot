@@ -5,6 +5,9 @@ import firebase_admin
 from firebase_admin import credentials, auth
 import stripe
 import json
+import numpy as np
+from agent import load_model, predict_action
+from data import fetch_stock_data, fetch_sentiment, preprocess_data
 
 # Firebase setup (placeholder, need key.json)
 # cred = credentials.Certificate('key.json')
@@ -12,6 +15,9 @@ import json
 
 # Stripe setup (placeholder, need keys)
 # stripe.api_key = 'sk_test_...'
+
+# Load model at startup
+model = load_model()
 
 st.title('RL Trading Bot Dashboard')
 
@@ -22,18 +28,28 @@ st.title('RL Trading Bot Dashboard')
 ticker = st.sidebar.selectbox('Select Ticker', ['AAPL', 'GOOGL', 'BTC-USD'])
 
 if st.sidebar.button('Predict'):
-    # Call API
-    response = requests.post('http://localhost:8000/predict', json={'ticker': ticker})
-    if response.status_code == 200:
-        result = response.json()
-        st.write(f"Predicted Action: {result['action']} (0: Sell, 1: Hold, 2: Buy)")
-        st.write("SHAP Explanation:", result['explanation'])
-
-        # Placeholder plot
-        fig = go.Figure(data=[go.Bar(x=['Feature1', 'Feature2'], y=[0.1, 0.2])])
-        st.plotly_chart(fig)
-    else:
-        st.error("Prediction failed")
+    try:
+        # Fetch and preprocess data
+        df = fetch_stock_data(ticker, '2023-01-01', '2024-01-01')
+        if df.empty:
+            st.error("Failed to fetch data for ticker")
+        else:
+            sentiment = fetch_sentiment(ticker)
+            train_data, test_data = preprocess_data(df, sentiment)
+            if test_data:
+                # Use last window for prediction
+                obs = test_data[-1]
+                action = predict_action(model, obs)
+                st.write(f"Predicted Action: {action} (0: Sell, 1: Hold, 2: Buy)")
+                st.write("Note: SHAP explanations removed for deployment simplicity.")
+                
+                # Placeholder plot
+                fig = go.Figure(data=[go.Bar(x=['Feature1', 'Feature2'], y=[0.1, 0.2])])
+                st.plotly_chart(fig)
+            else:
+                st.error("Not enough data for prediction")
+    except Exception as e:
+        st.error(f"Prediction failed: {str(e)}")
 
 # Monetization
 if st.button('Subscribe for Premium'):
