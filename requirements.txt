@@ -1,7 +1,6 @@
 stable-baselines3
 yfinance
 ta-lib
-shap
 fastapi
 streamlit
 firebase-admin
