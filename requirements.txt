@@ -17,3 +17,4 @@ plotly
 alpaca-trade-api
 gym
 uvicorn
+six
