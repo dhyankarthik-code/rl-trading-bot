@@ -1,7 +1,6 @@
 from stable_baselines3 import PPO
 import torch
 import numpy as np
-import shap
 import backtrader as bt
 from env import TradingEnv
 import matplotlib.pyplot as plt
