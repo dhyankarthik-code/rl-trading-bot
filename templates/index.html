@@ -101,6 +101,18 @@
         function goToSupercharts() {
             window.location.href = '/supercharts';
         }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(event) {
+            if (event.altKey && event.key === 'h') {
+                alert('Horizontal Line tool activated (placeholder)');
+            }
+        });
+
+        // Double-click to reset axes
+        document.getElementById('chart').addEventListener('dblclick', function() {
+            alert('Axes reset (placeholder)');
+        });
     </script>
 </body>
 </html>
