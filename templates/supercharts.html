@@ -11,23 +11,7 @@
 </head>
 <body>
     <div class="container-fluid">
-        <!-- Top Bar -->
-        <nav class="navbar navbar-expand-lg navbar-light bg-light">
-            <div class="container-fluid">
-                <a class="navbar-brand" href="/">Supercharts</a>
-                <div class="d-flex">
-                    <input class="form-control me-2" type="search" placeholder="Symbol" id="symbol">
-                    <select class="form-select me-2" id="timeframe">
-                        <option>1m</option><option>5m</option><option>1h</option><option>1d</option>
-                    </select>
-                    <select class="form-select me-2" id="gridSize">
-                    <option>1x1</option><option>2x2</option><option>1x2</option><option>2x1</option>
-                </select>
-                <button class="btn btn-outline-primary" onclick="addChart()">Add Chart</button>
-                    <button class="btn btn-outline-secondary" onclick="saveLayout()">Save Layout</button>
-                    <button class="btn btn-outline-success" onclick="loadLayout()">Load Layout</button>
-                </div>
-            </div>
+        <div class="row">
             <!-- Left Toolbar -->
             <div class="col-md-2 bg-secondary text-white p-3">
                 <h5>Drawing Tools</h5>
@@ -46,18 +30,44 @@
                 <h5>Risk Tools</h5>
                 <button class="btn btn-warning btn-sm" onclick="calcPosition()">Calc Position</button>
             </div>
-        <ul class="nav nav-tabs" id="chartTabs">
-            <li class="nav-item">
-                <a class="nav-link active" href="#tab1">Chart 1</a>
-            </li>
-        </ul>
-        <div class="tab-content" id="chartContent">
-            <div class="tab-pane active" id="tab1">
-                <div class="row" id="grid1">
-                    <div class="col-12">
-                        <div id="chart1" style="height: 400px;"></div>
+
+            <!-- Main Content -->
+            <div class="col-md-7">
+                <!-- Multi-Tab -->
+                <ul class="nav nav-tabs" id="chartTabs">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#tab1">Chart 1</a>
+                    </li>
+                </ul>
+                <div class="tab-content" id="chartContent">
+                    <div class="tab-pane active" id="tab1">
+                        <div class="row" id="grid1">
+                            <div class="col-12">
+                                <div id="chart1" style="height: 400px;"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Right Panel -->
+            <div class="col-md-3 bg-light p-3">
+                <h5>Object Tree</h5>
+                <div id="objectTree">
+                    <div class="folder" onclick="toggleFolder('drawings')">Drawings <span>▶</span></div>
+                    <div id="drawings" class="folder-content" style="display:none;">
+                        <div class="object-item" onclick="selectObject('trend1')">Trend Line 1</div>
+                        <div class="object-item" onclick="selectObject('horiz1')">Horizontal 1</div>
+                    </div>
+                    <div class="folder" onclick="toggleFolder('indicators')">Indicators <span>▶</span></div>
+                    <div id="indicators" class="folder-content" style="display:none;">
+                        <div class="object-item" onclick="selectObject('ma20')">MA(20)</div>
+                        <div class="object-item" onclick="selectObject('rsi')">RSI</div>
+                    </div>
+                </div>
+                <button class="btn btn-sm btn-secondary mt-2" onclick="hideSelected()">Hide</button>
+                <button class="btn btn-sm btn-danger mt-2" onclick="deleteSelected()">Delete</button>
+                <button class="btn btn-sm btn-warning mt-2" onclick="undo()">Undo (Ctrl+Z)</button>
             </div>
         </div>
     </div>
@@ -231,5 +241,45 @@
             // RSI Divergence
             alert('RSI Divergence highlighted (placeholder)');
         }
+
+        let selectedObject = null;
+        let history = [];
+
+        function toggleFolder(id) {
+            const el = document.getElementById(id);
+            el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function selectObject(obj) {
+            selectedObject = obj;
+            alert(`Selected: ${obj}`);
+        }
+
+        function hideSelected() {
+            if (selectedObject) {
+                // Placeholder: Hide object
+                alert(`Hidden: ${selectedObject}`);
+            }
+        }
+
+        function deleteSelected() {
+            if (selectedObject) {
+                history.push(selectedObject);
+                // Placeholder: Delete object
+                alert(`Deleted: ${selectedObject}`);
+            }
+        }
+
+        function undo() {
+            if (history.length > 0) {
+                const obj = history.pop();
+                // Placeholder: Restore object
+                alert(`Restored: ${obj}`);
+            }
+        }
+
+        // Init first chart
+        Plotly.newPlot('chart1', [{x: [1,2,3], y: [1,2,3], type: 'scatter'}]);
+    </script>
 </body>
 </html>
