@@ -7,7 +7,8 @@ import stripe
 import json
 import numpy as np
 from agent import load_model, predict_action
-from data import fetch_stock_data, fetch_sentiment, preprocess_data
+from data import fetch_live_data, fetch_sentiment, preprocess_data
+from datetime import datetime, timedelta
 
 # Firebase setup (placeholder, need key.json)
 # cred = credentials.Certificate('key.json')
@@ -18,6 +19,7 @@ from data import fetch_stock_data, fetch_sentiment, preprocess_data
 
 # Load model at startup
 model = load_model()
+st.write("✅ Model loaded successfully!")
 
 st.title('RL Trading Bot Dashboard')
 
@@ -29,10 +31,15 @@ ticker = st.sidebar.selectbox('Select Ticker', ['AAPL', 'GOOGL', 'BTC-USD'])
 
 if st.sidebar.button('Predict'):
     try:
-        # Fetch and preprocess data
-        df = fetch_stock_data(ticker, '2023-01-01', '2024-01-01')
-        if df.empty:
-            st.error("Failed to fetch data for ticker")
+        # Determine if crypto and adjust ticker
+        is_crypto = 'USD' in ticker
+        if is_crypto:
+            ticker_ccxt = ticker.replace('-USD', '/USDT')  # e.g., BTC-USD -> BTC/USDT
+        else:
+            ticker_ccxt = ticker
+        df = fetch_live_data(ticker_ccxt, is_crypto)
+        if df is None or df.empty:
+            st.error("Failed to fetch live data for ticker")
         else:
             sentiment = fetch_sentiment(ticker)
             train_data, test_data = preprocess_data(df, sentiment)
@@ -47,7 +54,7 @@ if st.sidebar.button('Predict'):
                 fig = go.Figure(data=[go.Bar(x=['Feature1', 'Feature2'], y=[0.1, 0.2])])
                 st.plotly_chart(fig)
             else:
-                st.error("Not enough data for prediction")
+                st.error("Not enough live data for prediction (need at least 50 data points)")
     except Exception as e:
         st.error(f"Prediction failed: {str(e)}")
 

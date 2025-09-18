@@ -6,6 +6,7 @@ import talib
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import nltk
+import datetime
 
 # Download NLTK data if needed
 nltk.download('vader_lexicon')
@@ -13,27 +14,60 @@ nltk.download('vader_lexicon')
 # Initialize VADER sentiment analyzer
 sia = SentimentIntensityAnalyzer()
 
-def fetch_stock_data(ticker, start, end):
+def fetch_live_data(ticker, is_crypto=False):
     """
-    Fetch historical stock data using yfinance.
+    Fetch live/today's intraday data for stocks or crypto.
 
     Args:
-        ticker (str): Stock ticker symbol (e.g., 'AAPL').
-        start (str): Start date in 'YYYY-MM-DD' format.
-        end (str): End date in 'YYYY-MM-DD' format.
+        ticker (str): Ticker symbol (e.g., 'AAPL' or 'BTC/USDT').
+        is_crypto (bool): True for crypto, False for stocks.
+
+    Returns:
+        pd.DataFrame: DataFrame with OHLCV data for today.
+    """
+    try:
+        today = datetime.date.today()
+        if is_crypto:
+            exchange = ccxt.binance()
+            # Fetch 1m candles for the last 24 hours (approximating today)
+            since = int((datetime.datetime.combine(today, datetime.time.min) - datetime.timedelta(days=1)).timestamp() * 1000)
+            ohlcv = exchange.fetch_ohlcv(ticker, '1m', since=since, limit=1440)  # 1440 mins in a day
+            df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+            df.set_index('timestamp', inplace=True)
+            return df
+        else:
+            # For stocks, fetch today's 1m data
+            df = yf.download(ticker, period='1d', interval='1m')
+            if df is not None and not df.empty:
+                df.columns = df.columns.droplevel(1)  # Flatten MultiIndex
+            return df
+    except Exception as e:
+        print(f"Error fetching live data: {e}")
+        return pd.DataFrame()
+
+def fetch_crypto_data(pair, timeframe='1d', limit=1000):
+    """
+    Fetch historical crypto data using ccxt from Binance.
+
+    Args:
+        pair (str): Trading pair (e.g., 'BTC/USDT').
+        timeframe (str): Timeframe for candles (e.g., '1d').
+        limit (int): Number of candles to fetch.
 
     Returns:
         pd.DataFrame: DataFrame with OHLCV data.
     """
     try:
-        df = yf.download(ticker, start=start, end=end)
-        df.columns = df.columns.droplevel(1)  # Flatten MultiIndex
+        exchange = ccxt.binance()
+        ohlcv = exchange.fetch_ohlcv(pair, timeframe=timeframe, limit=limit)
+        df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+        df.set_index('timestamp', inplace=True)
         return df
     except Exception as e:
-        print(f"Error fetching stock data: {e}")
+        print(f"Error fetching crypto data: {e}")
         return pd.DataFrame()
-
-def fetch_crypto_data(pair, timeframe='1d', limit=1000):
     """
     Fetch historical crypto data using ccxt from Binance.
 
@@ -129,11 +163,11 @@ def preprocess_data(df, sentiment_score):
 
 # Example usage
 if __name__ == "__main__":
-    # Fetch data
-    stock_df = fetch_stock_data('AAPL', '2020-01-01', '2023-01-01')
-    if not stock_df.empty:
+    # Fetch live data
+    stock_df = fetch_live_data('AAPL', is_crypto=False)
+    if stock_df is not None and not stock_df.empty:
         sentiment = fetch_sentiment('AAPL stock')
         train_data, test_data = preprocess_data(stock_df, sentiment)
-        print(f"Train windows: {len(train_data)}, Test windows: {len(test_data)}")
+        print(f"Live windows: {len(train_data) + len(test_data)}")
         # Save example
-        stock_df.to_csv('data.csv')
+        stock_df.to_csv('live_data.csv')
