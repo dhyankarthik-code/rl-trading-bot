@@ -37,6 +37,12 @@
                 <button class="btn btn-light btn-sm mb-1" onclick="addRectangle()">Rectangle</button><br>
                 <button class="btn btn-light btn-sm mb-1" onclick="addFib()">Fib Retracement</button><br>
                 <button class="btn btn-light btn-sm mb-1" onclick="addText()">Text</button><br>
+                <h5>Indicators</h5>
+                <button class="btn btn-info btn-sm mb-1" onclick="addMA()">MA</button><br>
+                <button class="btn btn-info btn-sm mb-1" onclick="addRSI()">RSI</button><br>
+                <button class="btn btn-info btn-sm mb-1" onclick="addMACD()">MACD</button><br>
+                <button class="btn btn-info btn-sm mb-1" onclick="addBOS()">BOS (Smart Money)</button><br>
+                <button class="btn btn-info btn-sm mb-1" onclick="addDivergence()">RSI Divergence</button><br>
                 <h5>Risk Tools</h5>
                 <button class="btn btn-warning btn-sm" onclick="calcPosition()">Calc Position</button>
             </div>
@@ -190,14 +196,40 @@
             Plotly.relayout('chart1', {annotations: [annotation]});
         }
 
-        function calcPosition() {
-            // Placeholder: Risk calculator
-            const account = prompt('Account size:');
-            const risk = prompt('Risk %:');
-            const entry = prompt('Entry price:');
-            const stop = prompt('Stop loss:');
-            const position = (parseFloat(account) * parseFloat(risk) / 100) / Math.abs(parseFloat(entry) - parseFloat(stop));
-            alert(`Position size: ${position.toFixed(2)}`);
+        function addMA() {
+            const maTrace = {
+                x: [1,2,3,4],
+                y: [1.5,2.5,2.5,3.5],
+                type: 'scatter',
+                name: 'MA(20)',
+                line: {color: 'orange'}
+            };
+            Plotly.addTraces('chart1', maTrace);
+        }
+
+        function addRSI() {
+            // Add subplot for RSI
+            alert('RSI added as subplot (placeholder)');
+        }
+
+        function addMACD() {
+            alert('MACD added (placeholder)');
+        }
+
+        function addBOS() {
+            // Smart Money BOS: Break of Structure
+            const bosAnnotation = {
+                text: 'BOS Detected',
+                x: 2.5, y: 2.5,
+                showarrow: true,
+                arrowhead: 2
+            };
+            Plotly.relayout('chart1', {annotations: [bosAnnotation]});
+        }
+
+        function addDivergence() {
+            // RSI Divergence
+            alert('RSI Divergence highlighted (placeholder)');
         }
 </body>
 </html>
