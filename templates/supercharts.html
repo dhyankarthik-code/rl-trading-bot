@@ -102,6 +102,11 @@
                 <button class="btn btn-sm btn-secondary mt-2" onclick="hideSelected()">Hide</button>
                 <button class="btn btn-sm btn-danger mt-2" onclick="deleteSelected()">Delete</button>
                 <button class="btn btn-sm btn-warning mt-2" onclick="undo()">Undo (Ctrl+Z)</button>
+                <h5 class="mt-3">News & Sentiment</h5>
+                <div id="newsPanel">
+                    <button class="btn btn-sm btn-info mb-2" onclick="loadNews()">Load News</button>
+                    <div id="newsContent"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -110,6 +115,8 @@
     <script>
         let chartCount = 1;
         let layouts = JSON.parse(localStorage.getItem('layouts') || '{}');
+        let indicators = []; // Array to track indicator traces
+        let currentSymbolIndex = 0; // For spacebar cycling
 
         function addChart() {
             chartCount++;
@@ -249,6 +256,8 @@
                 line: {color: 'orange'}
             };
             Plotly.addTraces('chart1', maTrace);
+            indicators.push({name: 'MA(20)', visible: true});
+            updateObjectTree();
         }
 
         function addRSI() {
@@ -279,14 +288,23 @@
         let selectedObject = null;
         let history = [];
 
-        function toggleFolder(id) {
-            const el = document.getElementById(id);
-            el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        function updateObjectTree() {
+            const indicatorsDiv = document.getElementById('indicators');
+            indicatorsDiv.innerHTML = '';
+            indicators.forEach((ind, index) => {
+                const item = document.createElement('div');
+                item.className = 'object-item';
+                item.textContent = ind.name;
+                item.ondblclick = () => toggleIndicator(index);
+                indicatorsDiv.appendChild(item);
+            });
         }
 
-        function selectObject(obj) {
-            selectedObject = obj;
-            alert(`Selected: ${obj}`);
+        function toggleIndicator(index) {
+            indicators[index].visible = !indicators[index].visible;
+            const update = {};
+            update[`visible[${index + 1}]`] = indicators[index].visible; // Assuming indicators start from trace 1
+            Plotly.restyle('chart1', update);
         }
 
         function hideSelected() {
@@ -321,19 +339,37 @@
             });
         });
 
-        function addToWatchlist() {
-            const symbol = prompt('Enter symbol:');
-            if (symbol) {
-                const list = document.querySelector('#watchlists .list-group');
-                const item = document.createElement('li');
-                item.className = 'list-group-item d-flex justify-content-between align-items-center';
-                item.innerHTML = `${symbol} <span class="badge bg-secondary">New</span>`;
-                list.appendChild(item);
-            }
+        function loadNews() {
+            fetch('http://localhost:8000/news')
+            .then(response => response.json())
+            .then(data => {
+                const content = document.getElementById('newsContent');
+                content.innerHTML = '';
+                data.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'mb-2';
+                    div.innerHTML = `<strong>${item.title}</strong><br><small>${item.sentiment} (X Sentiment)</small>`;
+                    content.appendChild(div);
+                });
+            })
+            .catch(error => console.error('Error loading news:', error));
         }
 
         // Init first chart
         Plotly.newPlot('chart1', [{x: [1,2,3], y: [1,2,3], type: 'scatter'}]);
+
+        // Spacebar cycling
+        document.addEventListener('keydown', function(event) {
+            if (event.code === 'Space') {
+                event.preventDefault();
+                const symbols = getWatchlistSymbols();
+                if (symbols.length > 0) {
+                    currentSymbolIndex = (currentSymbolIndex + 1) % symbols.length;
+                    document.getElementById('symbol').value = symbols[currentSymbolIndex];
+                    syncCharts();
+                }
+            }
+        });
     </script>
 </body>
 </html>

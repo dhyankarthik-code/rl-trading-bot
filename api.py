@@ -48,7 +48,7 @@ def get_hub():
 @app.get('/news')
 def get_news(query: str = "trading"):
     """
-    Fetch real-time news using NewsAPI free tier.
+    Fetch real-time news using NewsAPI free tier, with mock X sentiment.
     """
     try:
         api_key = "YOUR_NEWSAPI_KEY"  # Placeholder, get from newsapi.org
@@ -56,7 +56,12 @@ def get_news(query: str = "trading"):
         response = requests.get(url)
         if response.status_code == 200:
             data = response.json()
-            return {"articles": data.get("articles", [])}
+            articles = data.get("articles", [])
+            # Add mock X sentiment
+            sentiments = ["Bullish", "Bearish", "Neutral"]
+            for article in articles:
+                article["sentiment"] = np.random.choice(sentiments)
+            return {"articles": articles}
         else:
             return {"error": "NewsAPI limit reached or invalid key"}
     except Exception as e:
