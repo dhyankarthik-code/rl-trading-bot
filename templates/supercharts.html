@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supercharts Workspace</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Top Bar -->
+        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="/">Supercharts</a>
+                <div class="d-flex">
+                    <input class="form-control me-2" type="search" placeholder="Symbol" id="symbol">
+                    <select class="form-select me-2" id="timeframe">
+                        <option>1m</option><option>5m</option><option>1h</option><option>1d</option>
+                    </select>
+                    <select class="form-select me-2" id="gridSize">
+                    <option>1x1</option><option>2x2</option><option>1x2</option><option>2x1</option>
+                </select>
+                <button class="btn btn-outline-primary" onclick="addChart()">Add Chart</button>
+                    <button class="btn btn-outline-secondary" onclick="saveLayout()">Save Layout</button>
+                    <button class="btn btn-outline-success" onclick="loadLayout()">Load Layout</button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Multi-Tab -->
+        <ul class="nav nav-tabs" id="chartTabs">
+            <li class="nav-item">
+                <a class="nav-link active" href="#tab1">Chart 1</a>
+            </li>
+        </ul>
+        <div class="tab-content" id="chartContent">
+            <div class="tab-pane active" id="tab1">
+                <div class="row" id="grid1">
+                    <div class="col-12">
+                        <div id="chart1" style="height: 400px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let chartCount = 1;
+        let layouts = JSON.parse(localStorage.getItem('layouts') || '{}');
+
+        function addChart() {
+            chartCount++;
+            const tabId = `tab${chartCount}`;
+            const chartId = `chart${chartCount}`;
+            // Add tab
+            document.getElementById('chartTabs').innerHTML += `<li class="nav-item"><a class="nav-link" href="#${tabId}">Chart ${chartCount}</a></li>`;
+            // Add content
+            document.getElementById('chartContent').innerHTML += `
+                <div class="tab-pane" id="${tabId}">
+                    <div class="row" id="grid${chartCount}">
+                        <div class="col-12">
+                            <div id="${chartId}" style="height: 400px;"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            // Init chart
+            Plotly.newPlot(chartId, [{x: [1,2,3], y: [1,2,3], type: 'scatter'}]);
+        }
+
+        function changeGrid() {
+            const size = document.getElementById('gridSize').value;
+            // Placeholder: Adjust grid classes
+            alert(`Grid changed to ${size} (placeholder)`);
+        }
+
+        function syncCharts() {
+            // Placeholder: Update all charts with new symbol/timeframe
+            const symbol = document.getElementById('symbol').value;
+            alert(`Synced all charts to ${symbol} (placeholder)`);
+        }
+
+        // Event listeners
+        document.getElementById('symbol').addEventListener('change', syncCharts);
+        document.getElementById('timeframe').addEventListener('change', syncCharts);
+        document.getElementById('gridSize').addEventListener('change', changeGrid);
+
+        function saveLayout() {
+            const layout = { charts: chartCount };
+            localStorage.setItem('currentLayout', JSON.stringify(layout));
+            alert('Layout saved');
+        }
+
+        function loadLayout() {
+            const layout = JSON.parse(localStorage.getItem('currentLayout') || '{}');
+            // Placeholder: Recreate charts
+            alert('Layout loaded (placeholder)');
+        }
+
+        // Init first chart
+        Plotly.newPlot('chart1', [{x: [1,2,3], y: [1,2,3], type: 'scatter'}]);
+    </script>
+</body>
+</html>

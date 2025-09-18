@@ -6,6 +6,9 @@ app = Flask(__name__)
 # Backend API base URL (assuming local)
 API_BASE = "http://localhost:8000"
 
+# Backend API base URL (assuming local)
+API_BASE = "http://localhost:8000"
+
 @app.route('/')
 def hub():
     """
