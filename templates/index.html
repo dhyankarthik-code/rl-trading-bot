@@ -18,7 +18,50 @@
                     <select class="form-select me-2" id="timeframe">
                         <option>1m</option><option>5m</option><option>1h</option><option>1d</option>
                     </select>
-                    <button class="btn btn-outline-primary" onclick="goToSupercharts()">Go to Supercharts</button>
+                                    <button class="btn btn-outline-primary" onclick="goToSupercharts()">Go to Supercharts</button>
+                <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#settingsModal">Settings</button>
+            </div>
+        </nav>
+
+        <!-- Settings Modal -->
+        <div class="modal fade" id="settingsModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Chart Settings</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <h6>Style</h6>
+                        <select class="form-select" id="chartStyle">
+                            <option>Candlesticks</option>
+                            <option>Line</option>
+                            <option>Area</option>
+                        </select>
+                        <h6>Colors</h6>
+                        <label>Candle Body: <input type="color" id="bodyColor" value="#00ff00"></label><br>
+                        <label>Candle Wick: <input type="color" id="wickColor" value="#000000"></label><br>
+                        <h6>Canvas</h6>
+                        <label>Background: <input type="color" id="bgColor" value="#ffffff"></label><br>
+                        <label>Grid: <input type="checkbox" id="showGrid" checked></label> Show Grid<br>
+                        <h6>Crosshair</h6>
+                        <label>Enable: <input type="checkbox" id="crosshair" checked></label><br>
+                        <h6>Margins</h6>
+                        <label>Top: <input type="number" id="marginTop" value="10"></label><br>
+                        <h6>Events</h6>
+                        <label>Dividends: <input type="checkbox" id="showDividends"></label><br>
+                        <label>Splits: <input type="checkbox" id="showSplits"></label><br>
+                        <label>Earnings: <input type="checkbox" id="showEarnings"></label><br>
+                        <label>News: <input type="checkbox" id="showNews"></label><br>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" onclick="saveTemplate()">Save Template</button>
+                        <button type="button" class="btn btn-success" onclick="applySettings()">Apply</button>
+                    </div>
+                </div>
+            </div>
+        </div>
                 </div>
             </div>
         </nav>
@@ -113,6 +156,29 @@
         document.getElementById('chart').addEventListener('dblclick', function() {
             alert('Axes reset (placeholder)');
         });
+
+        function saveTemplate() {
+            const settings = {
+                style: document.getElementById('chartStyle').value,
+                bodyColor: document.getElementById('bodyColor').value,
+                wickColor: document.getElementById('wickColor').value,
+                bgColor: document.getElementById('bgColor').value,
+                showGrid: document.getElementById('showGrid').checked,
+                crosshair: document.getElementById('crosshair').checked,
+                marginTop: document.getElementById('marginTop').value,
+                showDividends: document.getElementById('showDividends').checked,
+                showSplits: document.getElementById('showSplits').checked,
+                showEarnings: document.getElementById('showEarnings').checked,
+                showNews: document.getElementById('showNews').checked
+            };
+            localStorage.setItem('chartTemplate', JSON.stringify(settings));
+            alert('Template saved!');
+        }
+
+        function applySettings() {
+            // Placeholder: Update chart with settings
+            alert('Settings applied (placeholder update chart)');
+        }
     </script>
 </body>
 </html>
