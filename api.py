@@ -8,14 +8,93 @@ import talib
 from sklearn.preprocessing import MinMaxScaler
 import pandas as pd
 from alpaca_trade_api import REST  # Placeholder, need keys
+import ccxt
+import requests
+from datetime import datetime
 
 app = FastAPI()
 
 # Load model at startup
 model = load_model()
 
+# Broker integrations (placeholders, need API keys)
+# alpaca_api = REST('API_KEY', 'SECRET_KEY', base_url='https://paper-api.alpaca.markets')
+binance_exchange = ccxt.binance()
+
 class PredictRequest(BaseModel):
     ticker: str
+
+@app.get('/hub')
+def get_hub():
+    """
+    Return dashboard hub JSON with links to all products.
+    """
+    return {
+        "title": "Supercharts Hub",
+        "products": {
+            "supercharts": "/supercharts",
+            "screeners": "/screener",
+            "calendar": "/calendar",
+            "news": "/news",
+            "portfolio": "/portfolio",
+            "options": "/options"
+        },
+        "integrations": {
+            "brokers": ["Alpaca", "Binance"],
+            "markets": ["Stocks", "Crypto", "Futures", "Forex", "Indices"]
+        }
+    }
+
+@app.get('/news')
+def get_news(query: str = "trading"):
+    """
+    Fetch real-time news using NewsAPI free tier.
+    """
+    try:
+        api_key = "YOUR_NEWSAPI_KEY"  # Placeholder, get from newsapi.org
+        url = f"https://newsapi.org/v2/everything?q={query}&apiKey={api_key}"
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            return {"articles": data.get("articles", [])}
+        else:
+            return {"error": "NewsAPI limit reached or invalid key"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get('/calendar')
+def get_calendar():
+    """
+    Fetch economic calendar events (mock/scraped from free sources).
+    """
+    # Placeholder: In real, scrape from investing.com or use free API
+    events = [
+        {"date": "2025-09-19", "event": "Fed Interest Rate Decision", "impact": "High"},
+        {"date": "2025-09-20", "event": "Apple Earnings", "impact": "Medium"}
+    ]
+    return {"events": events}
+
+@app.post('/trade/alpaca')
+def trade_alpaca(symbol: str, qty: int, side: str):
+    """
+    Place order via Alpaca (paper trading).
+    """
+    try:
+        # Placeholder: alpaca_api.submit_order(symbol=symbol, qty=qty, side=side, type='market', time_in_force='gtc')
+        return {"status": "Order placed (mock)", "symbol": symbol, "qty": qty, "side": side}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post('/trade/binance')
+def trade_binance(symbol: str, qty: float, side: str):
+    """
+    Place order via Binance (testnet).
+    """
+    try:
+        # Placeholder: binance_exchange.create_order(symbol, 'market', side, qty)
+        return {"status": "Order placed (mock)", "symbol": symbol, "qty": qty, "side": side}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post('/predict')
 def predict(request: PredictRequest):
