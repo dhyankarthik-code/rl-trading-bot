@@ -28,9 +28,18 @@
                     <button class="btn btn-outline-success" onclick="loadLayout()">Load Layout</button>
                 </div>
             </div>
-        </nav>
-
-        <!-- Multi-Tab -->
+            <!-- Left Toolbar -->
+            <div class="col-md-2 bg-secondary text-white p-3">
+                <h5>Drawing Tools</h5>
+                <button class="btn btn-light btn-sm mb-1" onclick="addTrendLine()">Trend Line</button><br>
+                <button class="btn btn-light btn-sm mb-1" onclick="addHorizontal()">Horizontal (Alt+H)</button><br>
+                <button class="btn btn-light btn-sm mb-1" onclick="addVertical()">Vertical (Alt+V)</button><br>
+                <button class="btn btn-light btn-sm mb-1" onclick="addRectangle()">Rectangle</button><br>
+                <button class="btn btn-light btn-sm mb-1" onclick="addFib()">Fib Retracement</button><br>
+                <button class="btn btn-light btn-sm mb-1" onclick="addText()">Text</button><br>
+                <h5>Risk Tools</h5>
+                <button class="btn btn-warning btn-sm" onclick="calcPosition()">Calc Position</button>
+            </div>
         <ul class="nav nav-tabs" id="chartTabs">
             <li class="nav-item">
                 <a class="nav-link active" href="#tab1">Chart 1</a>
@@ -127,8 +136,68 @@
             alert('Layout loaded');
         }
 
-        // Init first chart
-        Plotly.newPlot('chart1', [{x: [1,2,3], y: [1,2,3], type: 'scatter'}]);
-    </script>
+        // Drawing functions
+        function addTrendLine() {
+            const shape = {
+                type: 'line',
+                x0: 1, y0: 1, x1: 3, y1: 3,
+                line: {color: 'red', width: 2}
+            };
+            Plotly.relayout('chart1', {shapes: [shape]});
+        }
+
+        function addHorizontal() {
+            const shape = {
+                type: 'line',
+                x0: 0, y0: 2, x1: 1, y1: 2,
+                xref: 'paper',
+                line: {color: 'blue', width: 2}
+            };
+            Plotly.relayout('chart1', {shapes: [shape]});
+        }
+
+        function addVertical() {
+            const shape = {
+                type: 'line',
+                x0: 2, y0: 0, x1: 2, y1: 1,
+                yref: 'paper',
+                line: {color: 'green', width: 2}
+            };
+            Plotly.relayout('chart1', {shapes: [shape]});
+        }
+
+        function addRectangle() {
+            const shape = {
+                type: 'rect',
+                x0: 1, y0: 1, x1: 2, y1: 2,
+                fillcolor: 'rgba(255,0,0,0.2)',
+                line: {width: 1}
+            };
+            Plotly.relayout('chart1', {shapes: [shape]});
+        }
+
+        function addFib() {
+            // Placeholder: Add Fib levels
+            alert('Fib Retracement added (placeholder)');
+        }
+
+        function addText() {
+            const annotation = {
+                text: 'Sample Text',
+                x: 2, y: 2,
+                showarrow: false
+            };
+            Plotly.relayout('chart1', {annotations: [annotation]});
+        }
+
+        function calcPosition() {
+            // Placeholder: Risk calculator
+            const account = prompt('Account size:');
+            const risk = prompt('Risk %:');
+            const entry = prompt('Entry price:');
+            const stop = prompt('Stop loss:');
+            const position = (parseFloat(account) * parseFloat(risk) / 100) / Math.abs(parseFloat(entry) - parseFloat(stop));
+            alert(`Position size: ${position.toFixed(2)}`);
+        }
 </body>
 </html>
