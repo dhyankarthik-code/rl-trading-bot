@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<html lang="en">
+<html                     <button class="btn btn-outline-primary" onclick="addChart()">Add Chart</button>
+                    <button class="btn btn-outline-danger" onclick="getPrediction()">Get Prediction</button>
+                    <button class="btn btn-outline-secondary" onclick="saveLayout()">Save Layout</button>ng="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -76,10 +78,28 @@
             alert(`Grid changed to ${size} (placeholder)`);
         }
 
-        function syncCharts() {
-            // Placeholder: Update all charts with new symbol/timeframe
+        function getPrediction() {
             const symbol = document.getElementById('symbol').value;
-            alert(`Synced all charts to ${symbol} (placeholder)`);
+            fetch(`http://localhost:8000/predict`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ticker: symbol})
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Overlay SHAP on chart
+                const annotation = {
+                    text: `Action: ${data.action} (0:Sell,1:Hold,2:Buy)<br>SHAP: ${data.explanation}`,
+                    x: 0.5,
+                    y: 0.5,
+                    xref: 'paper',
+                    yref: 'paper',
+                    showarrow: false
+                };
+                Plotly.relayout('chart1', {annotations: [annotation]});
+                alert(`Prediction: ${data.action}`);
+            })
+            .catch(error => console.error('Error:', error));
         }
 
         // Event listeners
@@ -88,15 +108,23 @@
         document.getElementById('gridSize').addEventListener('change', changeGrid);
 
         function saveLayout() {
-            const layout = { charts: chartCount };
+            const layout = {
+                charts: chartCount,
+                symbol: document.getElementById('symbol').value,
+                timeframe: document.getElementById('timeframe').value,
+                gridSize: document.getElementById('gridSize').value
+            };
             localStorage.setItem('currentLayout', JSON.stringify(layout));
             alert('Layout saved');
         }
 
         function loadLayout() {
             const layout = JSON.parse(localStorage.getItem('currentLayout') || '{}');
-            // Placeholder: Recreate charts
-            alert('Layout loaded (placeholder)');
+            if (layout.symbol) document.getElementById('symbol').value = layout.symbol;
+            if (layout.timeframe) document.getElementById('timeframe').value = layout.timeframe;
+            if (layout.gridSize) document.getElementById('gridSize').value = layout.gridSize;
+            // Recreate charts if needed
+            alert('Layout loaded');
         }
 
         // Init first chart

@@ -14,30 +14,44 @@ nltk.download('vader_lexicon')
 # Initialize VADER sentiment analyzer
 sia = SentimentIntensityAnalyzer()
 
-def fetch_live_data(ticker, is_crypto=False):
+def fetch_live_data(ticker, is_crypto=False, is_forex=False, is_futures=False):
     """
-    Fetch live/today's intraday data for stocks or crypto.
+    Fetch live/today's intraday data for stocks, crypto, forex, or futures.
 
     Args:
-        ticker (str): Ticker symbol (e.g., 'AAPL' or 'BTC/USDT').
-        is_crypto (bool): True for crypto, False for stocks.
+        ticker (str): Ticker symbol (e.g., 'AAPL', 'BTC/USDT', 'EUR/USD').
+        is_crypto (bool): True for crypto.
+        is_forex (bool): True for forex.
+        is_futures (bool): True for futures.
 
     Returns:
         pd.DataFrame: DataFrame with OHLCV data for today.
     """
     try:
         today = datetime.date.today()
-        if is_crypto:
+        if is_futures or is_crypto:
             exchange = ccxt.binance()
-            # Fetch 1m candles for the last 24 hours (approximating today)
+            # For futures, use perpetual futures
+            if is_futures:
+                ticker = ticker + ':USDT' if not ticker.endswith(':USDT') else ticker
             since = int((datetime.datetime.combine(today, datetime.time.min) - datetime.timedelta(days=1)).timestamp() * 1000)
-            ohlcv = exchange.fetch_ohlcv(ticker, '1m', since=since, limit=1440)  # 1440 mins in a day
+            ohlcv = exchange.fetch_ohlcv(ticker, '1m', since=since, limit=1440)
+            df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+            df.set_index('timestamp', inplace=True)
+            return df
+        elif is_forex:
+            # Placeholder: Use ccxt for forex if available, else yfinance approximation
+            exchange = ccxt.binance()  # Assuming crypto proxy for forex
+            ticker = ticker.replace('/', '') + 'T'  # e.g., EURUSD -> EURUSDT
+            since = int((datetime.datetime.combine(today, datetime.time.min) - datetime.timedelta(days=1)).timestamp() * 1000)
+            ohlcv = exchange.fetch_ohlcv(ticker, '1m', since=since, limit=1440)
             df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
             df.set_index('timestamp', inplace=True)
             return df
         else:
-            # For stocks, fetch today's 1m data
+            # Stocks
             df = yf.download(ticker, period='1d', interval='1m')
             if df is not None and not df.empty:
                 df.columns = df.columns.droplevel(1)  # Flatten MultiIndex
