@@ -3,84 +3,150 @@ import numpy as np
 from gymnasium import spaces
 
 class TradingEnv(gym.Env):
-    """
-    Custom Gym environment for reinforcement learning trading simulation.
-    The agent learns to make buy/sell/hold decisions based on market data windows.
-    """
-    def __init__(self, data, window_size=50, initial_balance=10000):
-        """
-        Initialize the trading environment.
+    """Trading environment with risk-adjusted reward and basic risk controls.
 
-        Args:
-            data (list): List of numpy arrays, each representing a window of features.
-            window_size (int): Size of the observation window.
-            initial_balance (float): Starting balance for the portfolio.
-        """
-        super(TradingEnv, self).__init__()
+    Reward components:
+      base_return: (equity_t - equity_{t-1}) / equity_{t-1}
+      - cost_penalty: transaction costs applied when trades occur
+      - volatility_penalty: lambda_vol * rolling_std(window equity returns)
+      - drawdown_penalty: lambda_dd * current_drawdown
+      - trade_frequency_penalty: lambda_trades if over-trading
+      - inactivity_penalty: optional penalty for not trading when conditions favorable (placeholder)
+
+    Future extensions:
+      - Regime awareness
+      - Position sizing based on volatility
+      - Adaptive risk budget
+    """
+    def __init__(self,
+                 data,
+                 window_size: int = 50,
+                 initial_balance: float = 10000,
+                 commission: float = 0.001,
+                 slippage: float = 0.0005,
+                 lambda_vol: float = 0.1,
+                 lambda_dd: float = 0.2,
+                 lambda_trades: float = 0.001,
+                 rolling_vol_window: int = 20,
+                 max_drawdown_stop: float = 0.4):
+        super().__init__()
         self.data = data
         self.window_size = window_size
-        self.num_features = data[0].shape[1] if data else 12  # Assuming 12 features
-        self.current_step = 0
+        self.num_features = data[0].shape[1] if data else 12
+        self.initial_balance = initial_balance
         self.balance = initial_balance
         self.shares_held = 0
-        self.transaction_cost = 0.001  # 0.1% per transaction
+        self.current_step = 0
+        self.last_equity = initial_balance
+        self.equity_curve = []
+        self.returns_window = []
+        self.trade_count = 0
+        self.buy_price = None
 
-        # Define action and observation spaces
-        self.action_space = spaces.Discrete(3)  # 0: sell, 1: hold, 2: buy
-        self.observation_space = spaces.Box(low=0, high=1, shape=(self.window_size, self.num_features), dtype=np.float32)
+        # Risk & cost parameters
+        self.commission = commission
+        self.slippage = slippage
+        self.lambda_vol = lambda_vol
+        self.lambda_dd = lambda_dd
+        self.lambda_trades = lambda_trades
+        self.rolling_vol_window = rolling_vol_window
+        self.max_drawdown_stop = max_drawdown_stop
+        self.equity_peak = initial_balance
+
+        # Gym spaces
+        self.action_space = spaces.Discrete(3)
+        self.observation_space = spaces.Box(low=-10, high=10, shape=(self.window_size, self.num_features), dtype=np.float32)
 
     def reset(self, seed=None, options=None):
-        """
-        Reset the environment to the initial state.
-
-        Returns:
-            tuple: (observation, info)
-        """
+        super().reset(seed=seed)
         self.current_step = 0
-        self.balance = 10000
+        self.balance = self.initial_balance
         self.shares_held = 0
+        self.last_equity = self.initial_balance
+        self.equity_curve = [self.initial_balance]
+        self.returns_window = []
+        self.trade_count = 0
+        self.equity_peak = self.initial_balance
         obs = self._get_observation()
         return obs, {}
 
     def step(self, action):
-        """
-        Execute one step in the environment.
+        # Current close price (assumes column 3 is close)
+        current_price = float(self.data[self.current_step][-1, 3])
 
-        Args:
-            action (int): Action to take (0: sell, 1: hold, 2: buy).
+        # Track starting equity
+        starting_equity = self.balance + self.shares_held * current_price
 
-        Returns:
-            tuple: (observation, reward, done, info)
-        """
-        # Get current price
-        current_price = self.data[self.current_step][-1, 3]  # Close price of last step in window
-
-        # Execute action
+        # Execute action with basic position sizing (all-in/out). Placeholder for advanced sizing.
+        trade_executed = False
         if action == 0:  # Sell
             if self.shares_held > 0:
-                self.balance += self.shares_held * current_price * (1 - self.transaction_cost)
+                proceeds_price = current_price * (1 - self.slippage)
+                proceeds = self.shares_held * proceeds_price
+                cost = proceeds * self.commission
+                self.balance += proceeds - cost
                 self.shares_held = 0
+                trade_executed = True
         elif action == 2:  # Buy
-            shares_to_buy = self.balance // (current_price * (1 + self.transaction_cost))
-            if shares_to_buy > 0:
-                self.balance -= shares_to_buy * current_price * (1 + self.transaction_cost)
-                self.shares_held += shares_to_buy
+            if self.balance > 0:
+                exec_price = current_price * (1 + self.slippage)
+                shares_to_buy = int(self.balance / (exec_price * (1 + self.commission)))
+                if shares_to_buy > 0:
+                    spend = shares_to_buy * exec_price
+                    cost = spend * self.commission
+                    total = spend + cost
+                    self.balance -= total
+                    self.shares_held += shares_to_buy
+                    trade_executed = True
 
-        # Calculate portfolio value
-        portfolio_value = self.balance + self.shares_held * current_price
+        if trade_executed:
+            self.trade_count += 1
 
-        # Reward: Change in portfolio value (simplified, could include Sharpe)
-        prev_portfolio = self.balance + self.shares_held * (self.data[max(0, self.current_step-1)][-1, 3] if self.current_step > 0 else current_price)
-        reward = portfolio_value - prev_portfolio
+        # Updated equity
+        equity = self.balance + self.shares_held * current_price
+        self.equity_curve.append(equity)
+        if equity > self.equity_peak:
+            self.equity_peak = equity
 
-        # Move to next step
+        # Base return
+        base_return = (equity - starting_equity) / max(starting_equity, 1e-9)
+        self.returns_window.append(base_return)
+        if len(self.returns_window) > self.rolling_vol_window:
+            self.returns_window.pop(0)
+
+        # Rolling volatility
+        rolling_vol = np.std(self.returns_window) if len(self.returns_window) >= 2 else 0.0
+        # Drawdown
+        drawdown = (self.equity_peak - equity) / max(self.equity_peak, 1e-9)
+
+        # Penalties
+        vol_penalty = self.lambda_vol * rolling_vol
+        dd_penalty = self.lambda_dd * drawdown
+        trade_freq_penalty = self.lambda_trades * self.trade_count / (self.current_step + 1)
+
+        reward = base_return - vol_penalty - dd_penalty - trade_freq_penalty
+
+        # Episode termination conditions
         self.current_step += 1
-        done = self.current_step >= len(self.data) - 1
+        done = self.current_step >= len(self.data) - 1 or drawdown >= self.max_drawdown_stop
+        truncated = False
 
-        # Get next observation
-        obs = self._get_observation() if not done else np.zeros((self.window_size, self.num_features))
+        obs = self._get_observation() if not done else np.zeros((self.window_size, self.num_features), dtype=np.float32)
 
-        return obs, reward, done, False, {}
+        info = {
+            'equity': equity,
+            'base_return': base_return,
+            'rolling_vol': rolling_vol,
+            'drawdown': drawdown,
+            'trade_count': self.trade_count,
+            'reward_components': {
+                'base': base_return,
+                'vol_penalty': -vol_penalty,
+                'dd_penalty': -dd_penalty,
+                'trade_freq_penalty': -trade_freq_penalty
+            }
+        }
+        return obs, reward, done, truncated, info
 
     def _get_observation(self):
         """
@@ -105,8 +171,7 @@ if __name__ == "__main__":
     # Dummy data for testing
     dummy_data = [np.random.rand(50, 12) for _ in range(100)]
     env = TradingEnv(dummy_data)
-    obs = env.reset()
-    obs, _ = obs
+    obs, _ = env.reset()
     print(f"Observation shape: {obs.shape}")
     action = env.action_space.sample()
     obs, reward, done, _, _ = env.step(action)
