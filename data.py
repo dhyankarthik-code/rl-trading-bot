@@ -175,6 +175,86 @@ def preprocess_data(df, sentiment_score):
         print(f"Error preprocessing data: {e}")
         return [], []
 
+# --- Advanced / Extended Dataset & Feature Engineering (Phase Upgrade) ---
+
+def fetch_historical_stock(ticker: str, start: str, end: str, interval: str = '1d') -> pd.DataFrame:
+    """Fetch multi-year historical OHLCV for a stock using yfinance.
+
+    Args:
+        ticker (str): Ticker symbol.
+        start (str): 'YYYY-MM-DD'.
+        end (str): 'YYYY-MM-DD'.
+        interval (str): yfinance interval.
+    Returns:
+        pd.DataFrame: OHLCV dataframe.
+    """
+    try:
+        df = yf.download(ticker, start=start, end=end, interval=interval)
+        if df is not None and not df.empty and isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.droplevel(1)
+        return df
+    except Exception as e:
+        print(f"Error fetching historical stock data: {e}")
+        return pd.DataFrame()
+
+def add_advanced_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Add an expanded feature set for RL model.
+
+    Features include:
+      - Log returns & rolling returns
+      - Volatility (rolling std)
+      - ATR (Average True Range)
+      - Price momentum (ROC)
+      - Bollinger Band width
+      - RSI, MACD (if not already)
+      - Time of day (sin/cos encoding for intraday if granular)
+    """
+    try:
+        df = df.copy()
+        if 'Close' not in df.columns:
+            return df
+        # Returns
+        df['ret_1'] = df['Close'].pct_change()
+        df['log_ret'] = np.log(df['Close']).diff()
+        df['ret_5'] = df['Close'].pct_change(5)
+        df['ret_10'] = df['Close'].pct_change(10)
+        # Volatility
+        df['vol_10'] = df['ret_1'].rolling(10).std()
+        df['vol_20'] = df['ret_1'].rolling(20).std()
+        # ATR
+        if {'High','Low','Close'}.issubset(df.columns):
+            high = df['High'].values
+            low = df['Low'].values
+            close = df['Close'].values
+            df['ATR'] = talib.ATR(high, low, close, timeperiod=14)
+        # Momentum
+        df['roc_10'] = talib.ROC(df['Close'].values, timeperiod=10)
+        df['roc_20'] = talib.ROC(df['Close'].values, timeperiod=20)
+        # Existing indicators safeguard
+        if 'RSI' not in df.columns:
+            df['RSI'] = talib.RSI(df['Close'].values, timeperiod=14)
+        if 'MACD' not in df.columns:
+            macd, macd_signal, macd_hist = talib.MACD(df['Close'].values)
+            df['MACD'] = macd
+            df['MACD_signal'] = macd_signal
+            df['MACD_hist'] = macd_hist
+        # Bollinger bandwidth
+        upper, middle, lower = talib.BBANDS(df['Close'].values, timeperiod=20, nbdevup=2, nbdevdn=2, matype=0)
+        df['bb_upper'] = upper
+        df['bb_middle'] = middle
+        df['bb_lower'] = lower
+        df['bb_width'] = (upper - lower) / middle
+        # Time encodings (if intraday index)
+        if isinstance(df.index, pd.DatetimeIndex):
+            df['hour'] = df.index.hour
+            df['minute'] = df.index.minute
+            df['hour_sin'] = np.sin(2 * np.pi * df['hour'] / 24)
+            df['hour_cos'] = np.cos(2 * np.pi * df['hour'] / 24)
+        return df
+    except Exception as e:
+        print(f"Error adding advanced features: {e}")
+        return df
+
 # Example usage
 if __name__ == "__main__":
     # Fetch live data

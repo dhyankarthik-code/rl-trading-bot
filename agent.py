@@ -4,25 +4,38 @@ import numpy as np
 import backtrader as bt
 from env import TradingEnv
 import matplotlib.pyplot as plt
+import os
+from typing import List
+import shap  # used in explain_with_shap
 
 # Enable CUDA optimizations
 torch.backends.cudnn.benchmark = True
 
-def train_model(train_data, total_timesteps=200000):
-    """
-    Train the PPO model on the trading environment.
+def train_model(train_data: List, total_timesteps: int = 200000, checkpoint_interval: int = 50000, model_path: str = 'rl_model.zip'):
+    """Train the PPO model honoring total_timesteps with optional checkpointing.
 
     Args:
-        train_data (list): Training data windows.
-        total_timesteps (int): Number of training steps.
-
+        train_data (List): Training data windows.
+        total_timesteps (int): Total timesteps to learn.
+        checkpoint_interval (int): Interval to save intermediate checkpoints.
+        model_path (str): Final model save path.
     Returns:
         PPO: Trained model.
     """
     env = TradingEnv(train_data)
-    model = PPO('MlpPolicy', env, verbose=1, device='cuda', tensorboard_log='./logs/')
-    model.learn(total_timesteps=10000)
-    model.save('rl_model.zip')
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    model = PPO('MlpPolicy', env, verbose=1, device=device, tensorboard_log='./logs/')
+    steps_done = 0
+    while steps_done < total_timesteps:
+        remaining = total_timesteps - steps_done
+        next_chunk = min(checkpoint_interval, remaining)
+        model.learn(total_timesteps=next_chunk, reset_num_timesteps=False)
+        steps_done += next_chunk
+        ckpt_name = f"checkpoint_{steps_done}.zip"
+        model.save(ckpt_name)
+        print(f"[Checkpoint] Saved {ckpt_name}")
+    model.save(model_path)
+    print(f"[Training] Completed {total_timesteps} timesteps. Final model saved to {model_path}.")
     return model
 
 def load_model():
@@ -107,20 +120,4 @@ def backtest_model(test_df):
 
 # Example usage
 if __name__ == "__main__":
-    # Assume train_data and test_data from data.py
-    from data import preprocess_data, fetch_stock_data, fetch_sentiment
-
-    stock_df = fetch_stock_data('AAPL', '2020-01-01', '2023-01-01')
-    sentiment = fetch_sentiment('AAPL')
-    train_data, test_data = preprocess_data(stock_df, sentiment)
-
-    if train_data:
-        model = train_model(train_data)
-        # Explain
-        # data_sample = np.array(train_data[:10])
-        # test_obs = np.array(test_data[:10])
-        # explain_with_shap(model, data_sample, test_obs)
-
-        # Backtest (need test_df, assume stock_df test portion)
-        # test_df = stock_df[int(0.8 * len(stock_df)):]
-        # backtest_model(test_df)
+    print("Direct execution is for future extended training scripts. Use dedicated training script to avoid accidental retraining.")
